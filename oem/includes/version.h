@@ -1,0 +1,3 @@
+#define MAJOR_VERSION 0x01
+#define MINOR_VERSION 0x01
+#define PATCH_VERSION 0x01

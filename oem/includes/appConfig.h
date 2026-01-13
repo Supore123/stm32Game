@@ -14,7 +14,7 @@
 // Global System that determines state of app at drive
 typedef struct appConfig
 {
-	uint8_t gameVersion;
+	uint8_t gameVersion;	// Used for determining version
 	uint8_t appVersion;
 }appConfig_t;
 
