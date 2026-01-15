@@ -216,3 +216,4 @@ board=NUCLEO-F401RE
 boardIOC=true
 rtos.0.ip=FREERTOS
 isbadioc=false
+isbadioc=false
