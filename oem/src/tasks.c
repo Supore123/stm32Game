@@ -2,6 +2,7 @@
 #include "main.h"
 #include "gameLogic.h"
 #include "levels.h"
+#include "input.h"
 
 // Thread Handles
 osThreadId_t inputTaskHandle;
@@ -16,9 +17,9 @@ void RenderTask(void *params);
 /* Define the Task List */
 const taskConfig_t TaskRegistry[] = {
     // Name,         Function,           Priority,           Stack,  Handle Pointer
-//    {"Input",       InputTask,       osPriorityNormal,       2048,   &inputTaskHandle},
-    {"GameLogic",   GameLogicTask,   osPriorityHigh,     1024,   &gameLogicTaskHandle},
-    {"Render",      RenderTask,      osPriorityAboveNormal, 1024,   &renderTaskHandle},
+    {"Input",       InputTask,       osPriorityNormal,       2048,   &inputTaskHandle},
+    {"GameLogic",   GameLogicTask,   osPriorityHigh,     2048,   &gameLogicTaskHandle},
+    {"Render",      RenderTask,      osPriorityAboveNormal, 2048,   &renderTaskHandle},
 };
 
 #define TASK_COUNT (sizeof(TaskRegistry) / sizeof(taskConfig_t))
@@ -66,37 +67,98 @@ extern GameState_t Game;
 //
 void RenderTask(void *params)
 {
-    // 1. Initialize Hardware INSIDE the task
-    I2C_Init();   // Safe to call here or main, but here is safer for Mutex
-    OLED_Init();  // MUST be here because of vTaskDelay
+    I2C_Init();
+    OLED_Init();
 
-    // 2. Clear junk pixels once
     ClearScreen();
     OLED_Update();
-//    UI_DrawMenu(1);
-//    DrawColorPalette();
 
     for(;;)
     {
-        // 3. Render the current state (Menu or Game)
-        // Check your global state to decide what to draw
-//        if (1) {
-//        	UI_DrawMenu(0);
-//        }
-//        else if (Game.state == STATE_PLAYING) {
-//            // Render_Raycaster(); // We will build this later
-//        }
+        // 1. Clear the frame buffer for the new frame
+        ClearScreen();
 
-        // 4. Flush to screen
-    	DrawColorPalette();
-//        OLED_Update();
+        // 2. Decide what to render based on Game State
+        if (Game.state == STATE_MENU)
+        {
+            // Pass the current menu selection to be highlighted
+            UI_DrawMenu(selected_option);
+        }
+        else if (Game.state == STATE_PLAYING)
+        {
+            // Draw the 3D Raycaster world
+            Render_3D_View();
 
-        // 5. Maintain Frame Rate (~30 FPS)
-        vTaskDelay(pdMS_TO_TICKS(300));
+            // Draw a simple crosshair in the center
+            DrawChar(62, 30, '+');
+        }
+
+        // 3. Push the buffer to the physical OLED
+        OLED_Update();
+
+        // 4. Maintain ~30 FPS (33ms delay)
+        vTaskDelay(pdMS_TO_TICKS(33));
     }
 }
 
 void GameLogicTask(void *params)
 {
-	vTaskDelay(pdMS_TO_TICKS(500));
+    // Initialize Game state and set starting position/level
+    Game_Init();
+
+    for(;;)
+    {
+        // 1. Get the latest input from the joystick and button
+        PlayerInput_t input = Input_ReadState();
+
+        if (Game.state == STATE_MENU)
+        {
+            // 2. Handle Menu Selection (Move frame between START and LOAD)
+            if (input.y < -0.5f) {
+                selected_option = MENU_LOAD;
+            } else if (input.y > 0.5f) {
+                selected_option = MENU_START;
+            }
+
+            // 3. Handle Button Press to Start Game
+            if (input.is_firing)
+            {
+                Game.state = STATE_PLAYING;
+            }
+        }
+        else if (Game.state == STATE_PLAYING)
+        {
+            // Handle 3D Movement and Collision
+            Game_Update();
+
+            // Handle Shooting logic (Muzzle flash/Hitscan)
+            Game_HandleCombat();
+        }
+
+        // Run logic at 50Hz
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+
+void InputTask(void *params)
+{
+    // Initialize the hardware drivers once
+    ADC_Joystick_Init();
+
+    for(;;)
+    {
+        // Poll Joystick X and Y (using the ADC channels defined in adc.h)
+        // Values are typically 0-4095 for a 12-bit ADC
+        uint16_t x_raw = ADC_Read_Locked(JOY_CHANNEL_X);
+        uint16_t y_raw = ADC_Read_Locked(JOY_CHANNEL_Y);
+
+        // Read Button State (Digital)
+        uint8_t btn_raw = ADC_ReadButton();
+
+        // Process the raw data into the high-level Input state
+        // (This would typically update a shared global Input structure)
+
+        // Yield to other tasks for 10ms (100Hz polling rate)
+        osDelay(10);
+    }
 }
