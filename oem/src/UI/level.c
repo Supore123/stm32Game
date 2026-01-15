@@ -24,7 +24,8 @@ const Level_t Level1 = {
     },
     .start_x = 2.0f,
     .start_y = 2.0f,
-    .start_angle = 0.0f
+    .start_angle = 0.0f,
+	.enemy_count = 1
 };
 
 //
