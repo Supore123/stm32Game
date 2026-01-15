@@ -11,17 +11,36 @@
 #include <stdint.h>
 #include <stdio.h>
 
-// Global System that determines state of app at drive
+#include "main.h"
+#include "cmsis_os.h"
+
+// Global Configuration State
 typedef struct appConfig
 {
 	uint8_t gameVersion;	// Used for determining version
 	uint8_t appVersion;
 }appConfig_t;
 
-enum
+// TaskConfig_t: Handles the task at hand being utilised
+typedef struct
 {
+	const char *name;          // Task name for debugging
+	osThreadFunc_t func;       // Pointer to the task function
+	osPriority_t priority;     // osPriorityNormal, osPriorityHigh, etc.
+	uint32_t stack_size;       // Stack size in BYTES
+	osThreadId_t *handle;      // Pointer to the global handle variable
+}taskConfig_t;
+
+
+typedef enum
+{
+	APP_STATUS_OK = 0,
+	APP_STATUS_TASK_ERROR = 1,
 	APP_ERROR_INIT,
-	APP_ERROR_UKNOWN,
-}appStatus;
+	APP_ERROR_UKNOWN = 255,
+}appStatus_t;
+
+// Function Definitions
+appStatus_t createTasks();
 
 #endif /* HEADER_APPCONFIG_H_ */
