@@ -12,8 +12,8 @@
 #define JOY_PIN_X                GPIO_PIN_0      // PA0
 #define JOY_PIN_Y                GPIO_PIN_1      // PA1
 
-#define JOY_PORT_BUTTON          GPIOB           // Joystick Switch is on Port B
-#define JOY_PIN_BUTTON           GPIO_PIN_3      // PB3
+#define JOY_PORT_BUTTON          GPIOA           // Was GPIOB
+#define JOY_PIN_BUTTON           GPIO_PIN_10     // Was GPIO_PIN_3
 
 //
 // ADC Configuration Definitions

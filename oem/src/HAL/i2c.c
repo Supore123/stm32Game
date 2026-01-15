@@ -43,24 +43,21 @@ void I2C_Init(void)
 //
 // Thread-safe transmission to a device
 //
-HAL_StatusTypeDef I2C_Write_Locked(uint8_t devAddr, uint8_t *pData, uint16_t size)
-{
+HAL_StatusTypeDef I2C_Write_Locked(uint8_t devAddr, uint8_t *pData, uint16_t size) {
     HAL_StatusTypeDef status = HAL_ERROR;
+    if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        status = HAL_I2C_Master_Transmit(&hi2c1, devAddr, pData, size, 25);
 
-    // Define a reasonable timeout (e.g., 25ms) to prevent infinite hanging
-    const uint32_t I2C_TIMEOUT_VAL = 25;
-
-    if (xSemaphoreTake(i2c_mutex, pdMS_TO_TICKS(100)) == pdTRUE)
-    {
-        // Replace HAL_MAX_DELAY with a real value
-        status = HAL_I2C_Master_Transmit(&hi2c1, devAddr, pData, size, I2C_TIMEOUT_VAL);
-
+        // If the bus is stuck, try a software reset of the peripheral
+        if (status != HAL_OK) {
+            __HAL_I2C_DISABLE(&hi2c1);
+            HAL_Delay(1);
+            __HAL_I2C_ENABLE(&hi2c1);
+        }
         xSemaphoreGive(i2c_mutex);
     }
-
     return status;
 }
-
 //
 // Thread-safe single byte transmission
 //

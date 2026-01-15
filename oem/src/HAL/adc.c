@@ -115,7 +115,13 @@ uint16_t ADC_Read_Locked(uint32_t channel)
 // Helper to read the digital button state
 // Returns 0 if Pressed (Active Low), 1 if Released
 //
+// Example logic for active-low button (standard for most joysticks)
 uint8_t ADC_ReadButton(void)
 {
-    return HAL_GPIO_ReadPin(JOY_PORT_BUTTON, JOY_PIN_BUTTON);
+    // If the pin is RESET (0), it means the button is pressed
+    if (HAL_GPIO_ReadPin(JOY_PORT_BUTTON, JOY_PIN_BUTTON) == GPIO_PIN_RESET)
+    {
+        return 1; // Return "True" for pressed
+    }
+    return 0; // Return "False" for released
 }
