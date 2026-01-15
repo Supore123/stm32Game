@@ -31,28 +31,6 @@ typedef struct {
     // You could add Enemy_t spawn_points[] here later
 } Level_t;
 
-//
-// Global Game State Manager
-//
-typedef struct {
-    // Current State
-    enum { STATE_MENU, STATE_PLAYING, STATE_GAMEOVER } state;
-
-    // Pointer to the currently loaded level data
-    const Level_t* current_level;
-
-    // Player Position (Dynamic)
-    struct {
-        float x, y;
-        float dir_x, dir_y; // Direction Vector
-        float plane_x, plane_y; // Camera Plane
-    } player;
-
-} GameState_t;
-
-// External access to the global game state
-extern GameState_t Game;
-
 // API Prototypes
 void Game_Init(void);
 void Game_LoadLevel(int level_index);
