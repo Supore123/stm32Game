@@ -11,12 +11,11 @@ void Game_UpdateAI(void);
 //
 void Game_Init(void)
 {
-	Game.state = STATE_MENU;
-	Game.high_score = 150; // Mock value for UI testing
+    Game.state = STATE_MENU;
+    // LOAD FROM HARD SAVE
+    Game.high_score = LoadHighScore();
 
-	// Pre-load the first level so the background isn't null
-	Game_LoadLevel(0);
-	Game.state = STATE_MENU; // Ensure we stay in menu after loading
+    Game_LoadLevel(0);
 }
 
 //
@@ -58,9 +57,6 @@ void Game_LoadLevel(int level_index)
 	}
 }
 
-//
-// Main Game Logic Loop (Called by GameLogicTask)
-//
 //
 // Main Game Logic Loop (Called by GameLogicTask)
 //

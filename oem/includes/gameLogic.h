@@ -9,7 +9,8 @@ typedef enum {
     STATE_MENU,
     STATE_PLAYING,
     STATE_GAMEOVER,
-    STATE_WIN
+    STATE_WIN,
+	STATE_VICTORY
 } SceneState_t;
 
 typedef enum {
