@@ -49,6 +49,6 @@ typedef enum
 }appStatus_t;
 
 // Function Definitions
-appStatus_t createTasks();
+appStatus_t createTasks(void);
 
 #endif /* HEADER_APPCONFIG_H_ */

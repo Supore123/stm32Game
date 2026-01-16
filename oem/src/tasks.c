@@ -3,6 +3,8 @@
 #include "gameLogic.h"
 #include "levels.h"
 #include "input.h"
+#include "display.h"
+#include "i2c.h"
 
 // Thread Handles
 osThreadId_t inputTaskHandle;
@@ -24,7 +26,7 @@ const taskConfig_t TaskRegistry[] = {
 
 #define TASK_COUNT (sizeof(TaskRegistry) / sizeof(taskConfig_t))
 
-appStatus_t createTasks()
+appStatus_t createTasks(void)
 {
 	appStatus_t sc = APP_STATUS_OK;
 
@@ -48,10 +50,6 @@ appStatus_t createTasks()
 
 	return sc;
 }
-
-
-#include "display.h"
-//#include "i2c.h"
 
 // Global state variables
 static MenuOption_t selected_option = MENU_START;
@@ -168,11 +166,24 @@ void GameLogicTask(void *params)
 
 	// Counter to slow down the AI
 	uint8_t ai_tick_counter = 0;
+	// Timer to control how long screens stay visible
+	uint32_t state_timer = 0;
+	// Flag to ensure we don't accidentally double-click
+	int button_was_pressed = 0;
+	int button_latch = 1;
 
 	for(;;)
 	{
 		// Check inputs every frame
 		PlayerInput_t input = Input_ReadState();
+
+		if (input.is_firing)
+		{
+			button_latch = 1;
+		} else
+		{
+			button_latch = 0;
+		}
 
 		if (Game.state == STATE_MENU || Game.state == STATE_GAMEOVER || Game.state == STATE_WIN)
 		{
@@ -205,18 +216,73 @@ void GameLogicTask(void *params)
 				ai_tick_counter = 0;
 			}
 		}
-		else if (Game.state == STATE_WIN) {
-			// 1. Wait for 2 seconds (2000ms)
-			vTaskDelay(pdMS_TO_TICKS(2000));
+		else if (Game.state == STATE_WIN)
+		{
+			state_timer += 20;
 
-			// 2. Load Next Level
-			int nextLevel = Game.current_level_idx + 1;
-			Game_LoadLevel(nextLevel);
+			// Wait 2 seconds before allowing input
+			if (state_timer > 1500)
+			{
+				if (input.is_firing) {
+					button_was_pressed = 1;
+				}
+				else if (button_was_pressed) {
+					button_was_pressed = 0;
+				}
 
-			// 3. Start Playing immediately
-			Game.state = STATE_PLAYING;
+				if (input.is_firing && !button_was_pressed)
+				{
+					int nextLevel = Game.current_level_idx + 1;
+
+					// --- CHECK IF GAME IS OVER ---
+					if (nextLevel >= TOTAL_LEVELS) {
+						// WE BEAT THE GAME!
+
+						// Check High Score
+						if (Game.high_score < 9999) { // Example logic
+							// You might want to track a 'current_run_score' variable
+							// For now, let's assume we boost high score by 1000 on win
+							Game.high_score += 1000;
+							SaveHighScore(Game.high_score); // <--- HARD SAVE HERE
+						}
+
+						Game.state = STATE_VICTORY; // Go to final screen
+					}
+					else {
+						// Load Next Level Normally
+						Game_LoadLevel(nextLevel);
+						Game.state = STATE_PLAYING;
+					}
+				}
+			}
+		}
+		// --- NEW: FINAL VICTORY SCREEN STATE ---
+		else if (Game.state == STATE_VICTORY)
+		{
+			// Display Victory Screen
+
+			// Just wait for reset
+			if (input.is_firing) {
+				Game_Init(); // Back to Menu
+			}
+		}
+		else if (Game.state == STATE_GAMEOVER)
+		{
+			// Same logic for Game Over - Force a delay
+			state_timer += 20;
+
+			if (state_timer > 1000) // 1 second delay
+			{
+				// Allow restart only if button is fresh press
+				if (input.is_firing && !button_was_pressed) {
+					Game_Init(); // Reset to Menu
+				}
+			}
 		}
 
+		// Track button state for the NEXT frame
+		// This remembers if you were holding the button down
+		button_was_pressed = input.is_firing;
 		// Run this loop at ~50Hz (20ms delay)
 		vTaskDelay(pdMS_TO_TICKS(20));
 	}
