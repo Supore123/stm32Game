@@ -62,5 +62,6 @@ void DrawNumber(int x, int y, int num);
 void DrawString(int x, int y, const char* str);
 void DrawRect(int x, int y, int w, int h);
 void DrawBigTitle(int x, int y); // Custom "DOOM" logo drawer
+void DrawLine(int x0, int y0, int x1, int y1);
 
 #endif

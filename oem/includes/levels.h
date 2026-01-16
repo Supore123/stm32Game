@@ -1,9 +1,6 @@
 #ifndef INCLUDES_LEVELS_H_
 #define INCLUDES_LEVELS_H_
 
-#ifndef __GAME_LEVELS_H
-#define __GAME_LEVELS_H
-
 #include <stdint.h>
 #include "adc.h" // Use your Input API
 #include "levels.h"
@@ -23,19 +20,26 @@
 // Level Data Structure
 //
 typedef struct {
-    const uint8_t map[MAP_W][MAP_H]; // The grid (0=Empty, 1-4=Walls)
+    float x, y;
+} EnemySpawn_t; // Defines where they start in the level
+
+typedef struct {
+    uint8_t map[MAP_W][MAP_H];
     float start_x;
     float start_y;
     float start_angle;
-    uint8_t enemy_count;
-    // You could add Enemy_t spawn_points[] here later
+    // New Enemy Data
+    int enemy_count;
+    EnemySpawn_t enemies[5]; // Max 5 enemies per level for performance
 } Level_t;
+
+// extern Level structures
+extern const Level_t* AllLevels[];
+extern const int TOTAL_LEVELS;
 
 // API Prototypes
 void Game_Init(void);
 void Game_LoadLevel(int level_index);
 void Game_Update(void); // Call this in your Logic Task
-
-#endif
 
 #endif /* INCLUDES_LEVELS_H_ */

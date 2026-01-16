@@ -14,11 +14,19 @@
 #include "main.h"
 #include "cmsis_os.h"
 
+// Debugging assistant cheats
+#define DEBUG_GOD_MODE      1
+#define DEBUG_SHOW_COORDS   1
+
 // Global Configuration State
 typedef struct appConfig
 {
 	uint8_t gameVersion;	// Used for determining version
 	uint8_t appVersion;
+
+	uint8_t invert_y_axis;  // 1 = Inverted, 0 = Normal
+	float   sensitivity;    // Joystick sensitivity (e.g., 0.5 to 1.5)
+	uint8_t difficulty;     // 0 = Easy (Enemies have less HP), 1 = Hard
 }appConfig_t;
 
 // TaskConfig_t: Handles the task at hand being utilised
