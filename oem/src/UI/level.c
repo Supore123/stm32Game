@@ -25,7 +25,11 @@ const Level_t Level1 = {
     .start_x = 2.0f,
     .start_y = 2.0f,
     .start_angle = 0.0f,
-	.enemy_count = 1
+	.enemy_count = 2,
+	.enemies = {
+		{ .x = 10.5f, .y = 10.5f }, // Enemy 1 Position
+		{ .x = 12.5f, .y = 13.5f } // Enemy 2 Position
+	}
 };
 
 //
@@ -45,3 +49,4 @@ const Level_t Level2 = {
 
 // Array of all levels for easy Menu selection
 const Level_t* AllLevels[] = { &Level1, &Level2 };
+const int TOTAL_LEVELS = 2;

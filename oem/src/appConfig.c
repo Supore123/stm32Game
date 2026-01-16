@@ -1,6 +1,15 @@
 #include "main.h"
 #include "appConfig.h"
 
+// Default App Parameters
+appConfig_t AppConfig = {
+    .gameVersion = 1,
+    .appVersion = 0,
+    .invert_y_axis = 0,   // Standard controls by default
+    .sensitivity = 1.0f,  // Normal speed
+    .difficulty = 0       // Normal difficulty
+};
+
 // Function to intiialise the appStatus
 void appInit()
 {
