@@ -290,23 +290,35 @@ void GameLogicTask(void *params)
 
 void InputTask(void *params)
 {
-	// Initialize the hardware drivers once
-	ADC_Joystick_Init();
+    InputEvent_t event;
+    float last_x = 0, last_y = 0;
+    int last_btn = 0;
 
-	for(;;)
-	{
-		// Poll Joystick X and Y (using the ADC channels defined in adc.h)
-		// Values are typically 0-4095 for a 12-bit ADC
-		uint16_t x_raw = ADC_Read_Locked(JOY_CHANNEL_X);
-		uint16_t y_raw = ADC_Read_Locked(JOY_CHANNEL_Y);
+    for(;;)
+    {
+        // 1. Read Hardware
+        float curr_x = GetJoystickX();
+        float curr_y = GetJoystickY();
+        int curr_btn = GetButton();
 
-		// Read Button State (Digital)
-		uint8_t btn_raw = ADC_ReadButton();
+        // 2. Detect Changes (Simple De-duplication)
+        if (fabsf(curr_x - last_x) > 0.05f || fabsf(curr_y - last_y) > 0.05f) {
+            event.type = EVENT_MOVE;
+            event.x = curr_x;
+            event.y = curr_y;
+            // Send to Queue (Wait 0ms, don't block input if queue full)
+            osMessagePut(xInputQueue, (uint32_t)&event, 0);
+            last_x = curr_x;
+            last_y = curr_y;
+        }
 
-		// Process the raw data into the high-level Input state
-		// (This would typically update a shared global Input structure)
+        if (curr_btn != last_btn) {
+            event.type = (curr_btn) ? EVENT_FIRE_PRESS : EVENT_FIRE_RELEASE;
+            event.x = 0; event.y = 0;
+            osMessagePut(xInputQueue, (uint32_t)&event, 0);
+            last_btn = curr_btn;
+        }
 
-		// Yield to other tasks for 10ms (100Hz polling rate)
-		osDelay(10);
-	}
+        osDelay(20); // Poll at 50Hz
+    }
 }

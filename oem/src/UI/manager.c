@@ -187,6 +187,9 @@ void Game_UpdateAI(void)
 		float dy = Game.player.y - Game.enemies[i].y;
 		float dist = sqrtf(dx*dx + dy*dy);
 
+		// --- FIX: Prevent Divide by Zero ---
+		if (dist < 0.1f) dist = 0.1f;
+
 		if (dist > 0.5f) {
 			// Move towards player
 			float speed = 0.15f; // AI Speed (at 10Hz tick)

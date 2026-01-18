@@ -15,6 +15,20 @@ typedef struct
     uint8_t is_firing;  // 1 = Pressed, 0 = Released
 } PlayerInput_t;
 
+typedef enum {
+    EVENT_NONE,
+    EVENT_MOVE,
+    EVENT_FIRE_PRESS,
+    EVENT_FIRE_RELEASE
+} InputEventType_t;
+
+typedef struct {
+    InputEventType_t type;
+    float x, y; // Joystick values
+} InputEvent_t;
+
+extern osMessageQId xInputQueue; // Queue Handle
+
 // Function Prototypes
 void Input_Init(void);
 PlayerInput_t Input_ReadState(void);

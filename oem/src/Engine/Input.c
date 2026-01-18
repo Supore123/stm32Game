@@ -19,19 +19,54 @@ void Input_Init(void)
 //
 // Reads and Processes Player Input
 //
-PlayerInput_t Input_ReadState(void) {
-    PlayerInput_t state;
+// Internal cache to remember the last known state
+// (Static ensures it persists between function calls)
+static PlayerInput_t cached_state = {0.0f, 0.0f, 0};
 
-    // Read raw ADC (0-4095)
-    uint16_t raw_x = ADC_Read_Locked(JOY_CHANNEL_X);
-    uint16_t raw_y = ADC_Read_Locked(JOY_CHANNEL_Y);
+PlayerInput_t Input_ReadState(void)
+{
+    osEvent evt;
+    uint32_t raw_msg;
+    int data_found = 0;
 
-    // Convert to -1.0 to 1.0 (Center is approx 2048)
-    state.x = ((float)raw_x - 2048.0f) / 2048.0f;
-    state.y = ((float)raw_y - 2048.0f) / 2048.0f;
+    // --- 1. DRAIN THE QUEUE ---
+    // Loop until the queue is empty. We only care about the very last packet.
+    while (1)
+    {
+        // Timeout = 0 means "Don't wait, just tell me if data is there"
+        evt = osMessageGet(xInputQueue, 0);
 
-    // Button Logic
-    state.is_firing = ADC_ReadButton();
+        if (evt.status == osEventMessage) {
+            raw_msg = evt.value.v;
+            data_found = 1; // Mark that we got new data
+        } else {
+            break; // Queue is empty, stop looping
+        }
+    }
 
-    return state;
+    // --- 2. UPDATE CACHE (If we got new data) ---
+    if (data_found)
+    {
+        // UNPACK: Mirroring the packing logic from InputTask
+        // [Btn (1 bit) | Unused | Y (12 bits) | X (12 bits)]
+        uint16_t raw_x = raw_msg & 0xFFF;
+        uint16_t raw_y = (raw_msg >> 12) & 0xFFF;
+        uint8_t  btn   = (raw_msg >> 24) & 1;
+
+        // NORMALIZE: Convert 0..4095 -> -1.0 .. 1.0
+        // (Assuming 2048 is center)
+        cached_state.x = ((float)raw_x - 2048.0f) / 2048.0f;
+        cached_state.y = ((float)raw_y - 2048.0f) / 2048.0f;
+
+        // Deadzone (Optional: Snaps small drift to 0.0)
+        if (fabsf(cached_state.x) < 0.1f) cached_state.x = 0.0f;
+        if (fabsf(cached_state.y) < 0.1f) cached_state.y = 0.0f;
+
+        cached_state.is_firing = btn;
+    }
+
+    // --- 3. RETURN STATE ---
+    // If queue was empty, this returns the joystick position from the previous frame,
+    // which effectively acts as a "Hold" (perfect for smooth movement).
+    return cached_state;
 }
