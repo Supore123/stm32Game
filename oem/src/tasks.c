@@ -174,14 +174,18 @@ void GameLogicTask(void *params)
 // ---------------------------------------------------------
 void InputTask(void *params)
 {
+    // Hardware Init (Starts the DMA in background)
     Input_Init();
+
+    // Setup Timing (50Hz / 20ms)
     const uint32_t frequency = 20;
     uint32_t tick = osKernelGetTickCount();
 
     for(;;)
     {
-        uint16_t raw_x = ADC_Read_Locked(JOY_CHANNEL_X);
-        uint16_t raw_y = ADC_Read_Locked(JOY_CHANNEL_Y);
+        // DMA has already updated these variables for us
+        uint32_t raw_x = ADC_GetX();
+        uint32_t raw_y = ADC_GetY();
         uint8_t  btn   = ADC_ReadButton();
 
         uint32_t packet = 0;

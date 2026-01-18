@@ -30,7 +30,8 @@ void appInit()
 //
 // Reads the high score from Flash Memory
 //
-uint32_t LoadHighScore(void) {
+uint32_t LoadHighScore(void)
+{
 	// Simply cast the address to a pointer and dereference it
 	uint32_t saved_score = *(__IO uint32_t*)FLASH_STORAGE_ADDR;
 
@@ -44,7 +45,8 @@ uint32_t LoadHighScore(void) {
 //
 // HARD SAVE: Erases flash sector and writes new score
 //
-void SaveHighScore(uint32_t new_score) {
+void SaveHighScore(uint32_t new_score)
+{
 	HAL_FLASH_Unlock();
 
 	// 1. Erase Sector 7
@@ -55,13 +57,13 @@ void SaveHighScore(uint32_t new_score) {
 	EraseInitStruct.NbSectors = 1;
 
 	uint32_t SectorError = 0;
-	if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) != HAL_OK) {
-		// Handle Error (optional)
+	if (HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError) != HAL_OK)
+	{
+		// Handle Error
 		HAL_FLASH_Lock();
 		return;
 	}
 
-	// 2. Program the new score
 	HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, FLASH_STORAGE_ADDR, new_score);
 
 	HAL_FLASH_Lock();
