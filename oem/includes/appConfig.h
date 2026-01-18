@@ -50,5 +50,6 @@ typedef enum
 
 // Function Definitions
 appStatus_t createTasks(void);
-
+void SaveHighScore(uint32_t score);
+uint32_t LoadHighScore(void);
 #endif /* HEADER_APPCONFIG_H_ */

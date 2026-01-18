@@ -38,8 +38,8 @@ extern const Level_t* AllLevels[];
 extern const int TOTAL_LEVELS;
 
 // API Prototypes
-void Game_Init(void);
-void Game_LoadLevel(int level_index);
-void Game_Update(void); // Call this in your Logic Task
+//void Game_Init(void);
+//void Game_LoadLevel(int level_index);
+//void Game_Update(void); // Call this in your Logic Task
 
 #endif /* INCLUDES_LEVELS_H_ */

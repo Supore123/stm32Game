@@ -1,5 +1,6 @@
 #include "input.h"
 #include <math.h>
+#include "cmsis_os2.h" // Updated for CMSIS-RTOS v2
 
 // Threshold to ignore small joystick drift (Stick Drift)
 #define JOY_DEADZONE  0.15f
@@ -25,19 +26,19 @@ static PlayerInput_t cached_state = {0.0f, 0.0f, 0};
 
 PlayerInput_t Input_ReadState(void)
 {
-    osEvent evt;
     uint32_t raw_msg;
+    osStatus_t status;
     int data_found = 0;
 
-    // --- 1. DRAIN THE QUEUE ---
+    // --- 1. DRAIN THE QUEUE (CMSIS-RTOS v2) ---
     // Loop until the queue is empty. We only care about the very last packet.
+    // osMessageQueueGet replaces osMessageGet
     while (1)
     {
-        // Timeout = 0 means "Don't wait, just tell me if data is there"
-        evt = osMessageGet(xInputQueue, 0);
+        // Arguments: (Queue ID, buffer pointer, priority pointer, timeout in ticks)
+        status = osMessageQueueGet(xInputQueue, &raw_msg, NULL, 0);
 
-        if (evt.status == osEventMessage) {
-            raw_msg = evt.value.v;
+        if (status == osOK) {
             data_found = 1; // Mark that we got new data
         } else {
             break; // Queue is empty, stop looping

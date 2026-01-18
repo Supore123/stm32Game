@@ -274,24 +274,64 @@ void DrawRect(int x, int y, int w, int h)
 }
 
 // hardcoded "DOOM" logo with a checkerboard pattern for "Color"
+void DrawHLine(int x1, int x2, int y, int color) {
+    for(int x = x1; x <= x2; x++) {
+        SetPixel(x, y, color);
+    }
+}
+
+// Blocky "DOOM" Title
 void DrawBigTitle(int x, int y)
 {
-    // D
-    DrawVLine(x, y, y+10, 1);
-    DrawVLine(x+1, y, y+10, 1);
-    DrawVLine(x+5, y+2, y+8, 1);
-    // O
-    DrawVLine(x+8, y+2, y+8, 1);
-    DrawVLine(x+12, y+2, y+8, 1);
-    // O
-    DrawVLine(x+15, y+2, y+8, 1);
-    DrawVLine(x+19, y+2, y+8, 1);
-    // M
-    DrawVLine(x+22, y, y+10, 1);
-    DrawVLine(x+26, y, y+10, 1);
+    int h = 16; // Height of letters
+    int w = 12; // Width of letters
+    int s = 16; // Spacing between start of each letter
 
-    // Fill effect (Pseudo-color)
-    for(int i=0; i<30; i++) SetPixel(x+i, y+5, (i%2));
+    // --- D ---
+    // Left Pillar (Thick)
+    DrawVLine(x, y, y+h, 1);
+    DrawVLine(x+1, y, y+h, 1);
+    // Top & Bottom Bars
+    DrawHLine(x, x+w-2, y, 1);
+    DrawHLine(x, x+w-2, y+h, 1);
+    // Right Curve
+    DrawVLine(x+w-1, y+2, y+h-2, 1);
+    DrawVLine(x+w, y+2, y+h-2, 1);
+
+    // --- O ---
+    x += s;
+    // Side Pillars
+    DrawVLine(x, y+2, y+h-2, 1);
+    DrawVLine(x+1, y+2, y+h-2, 1);
+    DrawVLine(x+w-1, y+2, y+h-2, 1);
+    DrawVLine(x+w, y+2, y+h-2, 1);
+    // Top & Bottom
+    DrawHLine(x+2, x+w-2, y, 1);
+    DrawHLine(x+2, x+w-2, y+h, 1);
+
+    // --- O ---
+    x += s;
+    // Side Pillars
+    DrawVLine(x, y+2, y+h-2, 1);
+    DrawVLine(x+1, y+2, y+h-2, 1);
+    DrawVLine(x+w-1, y+2, y+h-2, 1);
+    DrawVLine(x+w, y+2, y+h-2, 1);
+    // Top & Bottom
+    DrawHLine(x+2, x+w-2, y, 1);
+    DrawHLine(x+2, x+w-2, y+h, 1);
+
+    // --- M ---
+    x += s;
+    // Side Pillars
+    DrawVLine(x, y, y+h, 1);
+    DrawVLine(x+1, y, y+h, 1);
+    DrawVLine(x+w-1, y, y+h, 1);
+    DrawVLine(x+w, y, y+h, 1);
+    // Diagonals (Manually drawn for precision)
+    SetPixel(x+2, y+2, 1); SetPixel(x+3, y+3, 1);
+    SetPixel(x+4, y+4, 1); SetPixel(x+5, y+5, 1); // Left slope
+    SetPixel(x+6, y+5, 1); SetPixel(x+7, y+4, 1); // Right slope
+    SetPixel(x+8, y+3, 1); SetPixel(x+9, y+2, 1);
 }
 
 void DrawLine(int x0, int y0, int x1, int y1) {

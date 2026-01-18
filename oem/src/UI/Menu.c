@@ -1,23 +1,29 @@
 #include "Menu.h"
 #include "display.h"
 
-void UI_DrawMenu(int selection)
+/* oem/src/UI/Menu.c */
+#include "Menu.h"
+#include "display.h"
+#include "gameLogic.h"
+#include <stdio.h>
+
+void UI_DrawMenu(MenuOption_t selected)
 {
-    ClearScreen();
+    DrawBigTitle(15, 5); // Draws game title
 
-    // 1. Draw Title (Simple "DOOM" or "MENU")
-    DrawBigTitle(42,5);
-
-    // 2. Draw Options
-    DrawString(40, 30, "START GAME");
-    DrawString(40, 45, "LOAD SAVE");
-
-    // 3. Draw Selection Frame (The "Frame around current option")
-    if (selection == 0) { // Start Selected
-        DrawRect(35, 28, 60, 9);
-    } else { // Load Selected
-        DrawRect(35, 43, 60, 9);
+    // --- Menu Options ---
+    if (selected == MENU_CLASSIC) {
+        DrawString(30, 30, "> CLASSIC");
+        DrawString(30, 42, "  ARCADE");
+    } else {
+        DrawString(30, 30, "  CLASSIC");
+        DrawString(30, 42, "> ARCADE");
     }
+
+    // --- High Score Display ---
+    char scoreBuf[20];
+    snprintf(scoreBuf, sizeof(scoreBuf), "HI-SCORE: %lu", Game.high_score);
+    DrawString(10, 56, scoreBuf);
 }
 
 //

@@ -1,227 +1,213 @@
+/* oem/src/UI/manager.c */
 #include "gameLogic.h"
 #include "input.h"
 #include "raycaster.h"
 #include "levels.h"
+#include "display.h"
 #include <math.h>
+#include <stdlib.h> // For rand()
 
 GameState_t Game;
-void Game_UpdateAI(void);
-//
-// Initialize the Game State on Boot
-//
-void Game_Init(void)
+
+static int IsValidLevel(int idx) {
+    return (idx >= 0 && idx < TOTAL_LEVELS);
+}
+
+void Game_Init(GameMode_t mode)
 {
     Game.state = STATE_MENU;
-    // LOAD FROM HARD SAVE
+    Game.mode = mode;
+
     Game.high_score = LoadHighScore();
+    Game.current_score = 0;
 
     Game_LoadLevel(0);
 }
 
-//
-// Loads level data and sets player spawn points
-//
 void Game_LoadLevel(int level_index)
 {
-	if (level_index >= TOTAL_LEVELS) level_index = 0;
+    if (!IsValidLevel(level_index)) {
+        Game.state = STATE_VICTORY;
+        return;
+    }
 
-	Game.current_level = AllLevels[level_index];
+    Game.current_level_idx = level_index;
+    Game.current_level = AllLevels[level_index];
 
-	// 1. Reset Player
-	Game.player.x = Game.current_level->start_x;
-	Game.player.y = Game.current_level->start_y;
-	float angle = Game.current_level->start_angle;
-	Game.player.dir_x = cosf(angle);
-	Game.player.dir_y = sinf(angle);
-	Game.player.plane_x = -0.66f * sinf(angle);
-	Game.player.plane_y = 0.66f * cosf(angle);
+    // Reset Player
+    Game.player.x = Game.current_level->start_x;
+    Game.player.y = Game.current_level->start_y;
+    float angle = Game.current_level->start_angle;
 
-	// 2. Load Enemies
-	// Clear old enemies first
-	for(int i=0; i<5; i++) Game.enemies[i].active = 0;
+    Game.player.dir_x = cosf(angle);
+    Game.player.dir_y = sinf(angle);
+    Game.player.plane_x = -0.66f * sinf(angle);
+    Game.player.plane_y =  0.66f * cosf(angle);
 
-	// Copy from Level Data to Game State
-	for(int i=0; i < Game.current_level->enemy_count; i++) {
-		Game.enemies[i].x = Game.current_level->enemies[i].x;
-		Game.enemies[i].y = Game.current_level->enemies[i].y;
-		Game.enemies[i].active = 1; // It is alive!
-	}
+    Game.player.health = 100;
 
-	Game.player.health = 100; // Reset HP
+    // Reset Enemies
+    for(int i=0; i<5; i++) Game.enemies[i].active = 0;
 
-	for(int i=0; i < Game.current_level->enemy_count; i++) {
-		Game.enemies[i].x = Game.current_level->enemies[i].x;
-		Game.enemies[i].y = Game.current_level->enemies[i].y;
-		Game.enemies[i].active = 1;
-		Game.enemies[i].health = 1; // Takes 3 shots to kill
-	}
+    for(int i=0; i < Game.current_level->enemy_count; i++) {
+        Game.enemies[i].x = Game.current_level->enemies[i].x;
+        Game.enemies[i].y = Game.current_level->enemies[i].y;
+        Game.enemies[i].active = 1;
+        Game.enemies[i].health = 3;
+    }
 }
 
-//
-// Main Game Logic Loop (Called by GameLogicTask)
-//
 void Game_Update(void)
 {
-	if (Game.state != STATE_PLAYING) return;
+    if (Game.state != STATE_PLAYING) return;
+    PlayerInput_t input = Input_ReadState();
 
-	PlayerInput_t input = Input_ReadState();
+    // Rotation
+    if (fabsf(input.x) > 0.15f) {
+        float rotSpeed = input.x * 0.05f;
+        float s = sinf(-rotSpeed);
+        float c = cosf(-rotSpeed);
+        float oldDirX = Game.player.dir_x;
+        Game.player.dir_x = Game.player.dir_x * c - Game.player.dir_y * s;
+        Game.player.dir_y = oldDirX * s + Game.player.dir_y * c;
+        float oldPlaneX = Game.player.plane_x;
+        Game.player.plane_x = Game.player.plane_x * c - Game.player.plane_y * s;
+        Game.player.plane_y = oldPlaneX * s + Game.player.plane_y * c;
+    }
 
-	// 1. Handle Rotation (Joystick X)
-	if (fabsf(input.x) > 0.1f) {
-		float rotSpeed = input.x * 0.06f;
-		float oldDirX = Game.player.dir_x;
-		Game.player.dir_x = Game.player.dir_x * cosf(-rotSpeed) - Game.player.dir_y * sinf(-rotSpeed);
-		Game.player.dir_y = oldDirX * sinf(-rotSpeed) + Game.player.dir_y * cosf(-rotSpeed);
+    // Movement
+    if (fabsf(input.y) > 0.15f) {
+        float moveSpeed = input.y * 0.08f;
+        float nextX = Game.player.x + Game.player.dir_x * moveSpeed;
+        float nextY = Game.player.y + Game.player.dir_y * moveSpeed;
 
-		float oldPlaneX = Game.player.plane_x;
-		Game.player.plane_x = Game.player.plane_x * cosf(-rotSpeed) - Game.player.plane_y * sinf(-rotSpeed);
-		Game.player.plane_y = oldPlaneX * sinf(-rotSpeed) + Game.player.plane_y * cosf(-rotSpeed);
-	}
-
-	// 2. Handle Movement (Joystick Y) WITH COLLISION
-	if (fabsf(input.y) > 0.1f) {
-		float moveSpeed = input.y * 0.10f; // Movement Speed
-
-		// Calculate where we WANT to be
-		float nextX = Game.player.x + Game.player.dir_x * moveSpeed;
-		float nextY = Game.player.y + Game.player.dir_y * moveSpeed;
-
-		// --- X-AXIS COLLISION CHECK ---
-		int gridX = (int)nextX;
-		int currY = (int)Game.player.y;
-
-		if (gridX >= 0 && gridX < 16)
-		{
-			uint8_t tile = Game.current_level->map[gridX][currY];
-
-			if (tile == 0) {
-				Game.player.x = nextX;
-			} else if (tile == 9) {
-				Game.state = STATE_WIN; // Fixed: Go to WIN, not MENU
-			}
-		}
-
-		// --- Y-AXIS COLLISION CHECK ---
-		int currX = (int)Game.player.x;
-		int gridY = (int)nextY;
-
-		if (gridY >= 0 && gridY < 16)
-		{
-			uint8_t tile = Game.current_level->map[currX][gridY];
-
-			if (tile == 0) {
-				Game.player.y = nextY;
-			} else if (tile == 9) {
-				Game.state = STATE_WIN; // Fixed: Go to WIN, not MENU
-			}
-		}
-	}
-
-    // --- DELETED: The "Reset HP / Reset Enemies" loop was here ---
-    // That code belongs ONLY in Game_LoadLevel, not Game_Update!
-
-    // --- DELETED: Duplicate AI Code ---
-    // You already have Game_UpdateAI() defined below.
-    // We should not run AI logic twice.
+        if(Game.current_level->map[(int)nextX][(int)Game.player.y] == 0) Game.player.x = nextX;
+        if(Game.current_level->map[(int)Game.player.x][(int)nextY] == 0) Game.player.y = nextY;
+    }
 }
 
-// Helper to check angles safely
 static int IsFacingEnemy(float playerAngle, float angleToEnemy, float threshold) {
-	float diff = fabsf(playerAngle - angleToEnemy);
-	if (diff > 3.14159f) diff = 6.28318f - diff;
-	return (diff < threshold);
+    float diff = fabsf(playerAngle - angleToEnemy);
+    if (diff > 3.14159f) diff = 6.28318f - diff;
+    return (diff < threshold);
 }
 
 void Game_HandleCombat(void)
 {
-	PlayerInput_t input = Input_ReadState();
+    PlayerInput_t input = Input_ReadState();
 
-	if (input.is_firing)
-	{
-		// 1. Draw Muzzle Flash (Visual only)
-		for(int i = 0; i < 5; i++) {
-			DrawVLine(64-2+i, 32-2, 32+2, 2);
-		}
+    if (input.is_firing)
+    {
+        // Visual Recoil/Flash
+        DrawVLine(62, 28, 36, 1);
+        DrawVLine(66, 28, 36, 1);
 
-		// 2. CHECK ENEMIES (No Raycasting!)
-		for(int i=0; i<5; i++) {
-			if (!Game.enemies[i].active) continue;
+        float maxRangeSq = 64.0f;
 
-			float dx = Game.enemies[i].x - Game.player.x;
-			float dy = Game.enemies[i].y - Game.player.y;
-			float dist = sqrtf(dx*dx + dy*dy);
+        for(int i=0; i<5; i++) {
+            if (!Game.enemies[i].active) continue;
 
-			float angleToEnemy = atan2f(dy, dx);
-			float playerAngle = atan2f(Game.player.dir_y, Game.player.dir_x);
+            float dx = Game.enemies[i].x - Game.player.x;
+            float dy = Game.enemies[i].y - Game.player.y;
+            float distSq = (dx*dx + dy*dy);
 
-			// Check if we are facing the enemy (within 14 degrees) AND they are close
-			if (IsFacingEnemy(playerAngle, angleToEnemy, 0.25f) && dist < 8.0f)
-			{
-				// HIT!
-				Game.enemies[i].health--;
+            if (distSq < maxRangeSq)
+            {
+                float angleToEnemy = atan2f(dy, dx);
+                float playerAngle = atan2f(Game.player.dir_y, Game.player.dir_x);
 
-				// Visual Hitmarker
-				DrawChar(64, 25, 'x');
+                if (IsFacingEnemy(playerAngle, angleToEnemy, 0.35f))
+                {
+                    Game.enemies[i].health--;
 
-				if (Game.enemies[i].health <= 0) {
-					Game.enemies[i].active = 0; // Enemy Dies
-					Game.high_score += 100;
-				}
-				return; // Stop after hitting one enemy
-			}
-		}
-	}
+                    if (Game.enemies[i].health <= 0) {
+                        Game.enemies[i].active = 0;
+
+                        Game.current_score += 100;
+                        if (Game.current_score > Game.high_score) {
+                            Game.high_score = Game.current_score;
+                            SaveHighScore(Game.high_score);
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+    }
 }
 
 void Game_UpdateAI(void)
 {
-	int enemies_remaining = 0;
+    int active_enemies = 0;
 
-	for(int i = 0; i < 5; i++)
-	{
-		if(!Game.enemies[i].active) continue;
-		enemies_remaining++;
+    // AI Logic
+    for(int i = 0; i < 5; i++)
+    {
+        if(!Game.enemies[i].active) continue;
+        active_enemies++;
 
-		// --- 1. CHASE PLAYER ---
-		float dx = Game.player.x - Game.enemies[i].x;
-		float dy = Game.player.y - Game.enemies[i].y;
-		float dist = sqrtf(dx*dx + dy*dy);
+        float dx = Game.player.x - Game.enemies[i].x;
+        float dy = Game.player.y - Game.enemies[i].y;
+        float distSq = dx*dx + dy*dy;
 
-		// --- FIX: Prevent Divide by Zero ---
-		if (dist < 0.1f) dist = 0.1f;
+        if (distSq > 0.25f && distSq < 100.0f) {
+            float dist = sqrtf(distSq);
+            Game.enemies[i].x += (dx / dist) * 0.04f;
+            Game.enemies[i].y += (dy / dist) * 0.04f;
+        }
 
-		if (dist > 0.5f) {
-			// Move towards player
-			float speed = 0.15f; // AI Speed (at 10Hz tick)
-			float moveX = (dx / dist) * speed;
-			float moveY = (dy / dist) * speed;
+        if (distSq < 0.6f) {
+            Game.player.health -= 2;
+        }
+    }
 
-			// Basic Collision
-			if(Game.current_level->map[(int)(Game.enemies[i].x + moveX)][(int)(Game.enemies[i].y)] == 0)
-				Game.enemies[i].x += moveX;
-			if(Game.current_level->map[(int)(Game.enemies[i].x)][(int)(Game.enemies[i].y + moveY)] == 0)
-				Game.enemies[i].y += moveY;
-		}
+    if (Game.player.health <= 0) {
+        Game.state = STATE_GAMEOVER;
+        return;
+    }
 
-		// --- 2. ATTACK PLAYER ---
-		// If touching player, deal damage
-		if (dist < 0.6f) {
-			Game.player.health -= 5; // Ouch!
+    // Progression
+    if (Game.mode == MODE_CLASSIC)
+    {
+        if (active_enemies == 0) {
+            //  Trigger Transition instead of immediate load
+            Game.state = STATE_LEVEL_TRANSITION;
+            Game.transition_timer = 250; // 50Hz * 5 seconds = 250 ticks
+        }
+    }
+    else if (Game.mode == MODE_ARCADE)
+    {
+        if (active_enemies < 3) {
+            for(int i=0; i<5; i++) {
+                if (!Game.enemies[i].active) {
+                    Game.enemies[i].x = 2.0f + (rand() % 10);
+                    Game.enemies[i].y = 2.0f + (rand() % 10);
 
-			// Push enemy back slightly to prevent instant death (bounce)
-			Game.enemies[i].x -= (dx / dist) * 0.5f;
-			Game.enemies[i].y -= (dy / dist) * 0.5f;
-		}
-	}
+                    if(Game.current_level->map[(int)Game.enemies[i].x][(int)Game.enemies[i].y] == 0) {
+                        Game.enemies[i].health = 3;
+                        Game.enemies[i].active = 1;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
 
-	// --- 3. CHECK WIN/LOSS CONDITIONS ---
-	if (Game.player.health <= 0) {
-		Game.state = STATE_GAMEOVER;
-	}
-	else if (enemies_remaining == 0) {
-		// All enemies dead?
-		// Optional: Check if we are also at the exit?
-		// For now, let's say "Kill all enemies = Level Clear"
-		Game.state = STATE_WIN;
-	}
+//  Transition Handler
+void Game_HandleTransition(void)
+{
+    if (Game.transition_timer > 0) {
+        Game.transition_timer--;
+    } else {
+        // Timer done, load next level
+        Game.current_level_idx++;
+
+        if (IsValidLevel(Game.current_level_idx)) {
+            Game_LoadLevel(Game.current_level_idx);
+            Game.state = STATE_PLAYING;
+        } else {
+            Game.state = STATE_VICTORY;
+        }
+    }
 }

@@ -2,6 +2,7 @@
 #define __INPUT_H
 
 #include "stm32f4xx_hal.h"
+#include "cmsis_os2.h"
 #include "adc.h" // Includes the low-level ADC driver
 
 //
@@ -27,7 +28,7 @@ typedef struct {
     float x, y; // Joystick values
 } InputEvent_t;
 
-extern osMessageQId xInputQueue; // Queue Handle
+extern osMessageQueueId_t xInputQueue; // Queue Handle
 
 // Function Prototypes
 void Input_Init(void);
